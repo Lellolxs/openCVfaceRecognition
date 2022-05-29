@@ -3,6 +3,7 @@ import numpy as np
 import cv2 as cv
 import time
 from PIL import Image
+import json
 
 COLOR = (255,0,0)
 STROKE = 2
@@ -21,6 +22,10 @@ CAP.set(3, CURRENT_RESOLUTION[0])
 CAP.set(4, CURRENT_RESOLUTION[1])
 
 def registerMemberPicture(data):
+    memberslist = []
+    with open('members.json', 'r', encoding='UTF-8') as members:
+        memberslist = json.load(members)
+
     while True:
         ret, frame = CAP.read()
         if cv.waitKey(20) & 0xFF == ord('q'):
@@ -29,6 +34,14 @@ def registerMemberPicture(data):
                 for i in range(3):                 
                     cv.imwrite(f'registeredMembers/{data[0]}/{i}.png', frame)
                     time.sleep(0.5)
+                memberslist['members'].append({
+                    "name": data[0],
+                    "birthdate": data[1],
+                    "purchase_date": data[2],
+                    "pass_type": data[3]
+                })
+                with open('members.json', 'w', encoding='UTF-8') as members:
+                    json.dump(memberslist, members, indent=2, separators=(',',': '), ensure_ascii=False)
                 break
 
         frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -57,10 +70,9 @@ def registerData():
     userData.append(input("Név: "))
     userData.append(input("Született (ÉV-HÓ-NAP): "))
     userData.append(input("Dátum: (ÉV-HÓ-NAP): "))
-    userData.append(input("Bérlet típus (ÉRVÉNYESSÉG): "))
+    userData.append(int(input("Bérlet típus (ÉRVÉNYESSÉG): ")))
     os.system('cls')
     registerMemberPicture(userData)
-
 
 def main():
     print("Beszélő Benedek Fitness CLI -\n© Hajdu Benedek, Resz Máté, Granilla Péter\n")
