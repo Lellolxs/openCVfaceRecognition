@@ -51,8 +51,8 @@ def train():
 
 def registerMemberPicture(data):
     CAP = cv.VideoCapture(0)
-    CAP.set(3, CURRENT_RESOLUTION[0])
-    CAP.set(4, CURRENT_RESOLUTION[1])
+    CAP.set(3, 1280)
+    CAP.set(4, 720)
 
     memberslist = []
     with open('members.json', 'r', encoding='UTF-8') as members:
@@ -61,16 +61,18 @@ def registerMemberPicture(data):
 
     while True:
         ret, frame = CAP.read()
-
         if not ret: 
             print('Hiba lépett fel a kamera indítása közben.')
             break
+        frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(frameGreyscale, 1.2, 4)
 
         if cv.waitKey(20) & 0xFF == ord('q'):
             if len(faces) > 0:
                 os.mkdir(f'registeredMembers/{nextMemberId}')
-                for i in range(3):                 
-                    cv.imwrite(f'registeredMembers/{nextMemberId}/{i}.png', frame)
+                for i in range(3):
+                    for (x,y,w,h) in faces:
+                        cv.imwrite(f'registeredMembers/{nextMemberId}/{i}.png', frame[y:y+h, x:x+w])
                     time.sleep(0.5)
                 memberslist['members'].append({
                     "name": data[0],
@@ -82,8 +84,6 @@ def registerMemberPicture(data):
                     json.dump(memberslist, members, indent=2, separators=(',',': '), ensure_ascii=False)
                 break
 
-        frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(frameGreyscale, 1.2, 4)
 
 
         #print(faces, len(faces))
