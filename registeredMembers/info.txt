@@ -1,1 +1,1 @@
-This is the folder where the program stores training material.
+Ebbe a mappába pakolja a program azokat a képeket amiket tanulásra használ.
