@@ -89,8 +89,8 @@ def train():
 
 def registerMemberPicture(data):
     CAP = cv.VideoCapture(0)
-    CAP.set(3, 1280)
-    CAP.set(4, 720)
+    #CAP.set(3, 1280)
+    #CAP.set(4, 720)
 
     memberslist = []
     with open('members.json', 'r', encoding='UTF-8') as members:
@@ -184,7 +184,11 @@ def recognize():
             for (x,y,w,h) in faces:
                 cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
 
+<<<<<<< HEAD
             #frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
+=======
+        frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
+>>>>>>> 34a87274e95b8cb1fb66b87c2d17d3368a98b1ee
 
             cv.imshow('frame', frame)
         CAP.release()
