@@ -39,7 +39,7 @@ if clear_terminal == None:
 
 
 print('Válasszon kamera felbontást:\n1 | 320 x 240\n2 | 640 x 480\n3 | 800 x 600\n4 | 1024 x 768')
-resolution = int(input('>>>'))
+resolution = int(input('>>> '))
 if resolution == 1:
     CURRENT_RESOLUTION = (320, 240)
     ZOOM = True
@@ -52,7 +52,8 @@ elif resolution == 3:
 elif resolution == 4:
     CURRENT_RESOLUTION = (1024, 768)
     ZOOM = False
-    
+clear_terminal()
+
 def train():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     image_dir = os.path.join(BASE_DIR, "registeredMembers")
@@ -88,9 +89,9 @@ def train():
     recognizer.save('trainer.yml')
 
 def registerMemberPicture(data):
-    CAP = cv.VideoCapture(0)
-    #CAP.set(3, 1280)
-    #CAP.set(4, 720)
+    CAP = cv.VideoCapture(0, cv.CAP_DSHOW)
+    CAP.set(3, CURRENT_RESOLUTION[0])
+    CAP.set(4, CURRENT_RESOLUTION[1])
 
     memberslist = []
     with open('members.json', 'r', encoding='UTF-8') as members:
@@ -121,11 +122,7 @@ def registerMemberPicture(data):
                 with open('members.json', 'w', encoding='UTF-8') as members:
                     json.dump(memberslist, members, indent=2, separators=(',',': '), ensure_ascii=False)
                 break
-
-
-
-        #print(faces, len(faces))
-
+            
         for (x,y,w,h) in faces:
             cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
 
@@ -135,35 +132,46 @@ def registerMemberPicture(data):
     CAP.release()
     cv.destroyAllWindows()
     train()
-    os.system('cls')
+    clear_terminal()
     main()
 
+def getBirthDate():
+    szuletett = input("Született (ÉV-HÓ-NAP): ")
+    szuletett = szuletett.split('-')
+    if len(szuletett) == 3:
+        for i, v in enumerate(szuletett):
+            szuletett[i] = int(v)
+        return szuletett
+    else:
+        getBirthDate()
+
 def registerData():
+    date = datetime.datetime.now()
     userData = list()
-    os.system('cls')
+    clear_terminal()
     userData.append(input("Név: "))
-    userData.append(input("Született (ÉV-HÓ-NAP): "))
-    userData.append(input("Dátum: (ÉV-HÓ-NAP): "))
+    userData.append(getBirthDate())
+    userData.append([date.year, date.month, date.day])
     userData.append(int(input("Bérlet típus (ÉRVÉNYESSÉG): ")))
-    os.system('cls')
+    clear_terminal()
     registerMemberPicture(userData)
 
 def recognize():
     memberslist = []
     with open('members.json', 'r', encoding='UTF-8') as members:
         memberslist = json.load(members)
-    print(memberslist)
     if not len(memberslist['members']) == 0:
-        # date = datetime.datetime.now()
-        # print(date)
+        recognizedFaces = dict()
+        date = datetime.datetime.now()
         recognizer = cv.face_LBPHFaceRecognizer.create()
         recognizer.read('trainer.yml')
-        CAP = cv.VideoCapture(0)
+        CAP = cv.VideoCapture(0, cv.CAP_DSHOW)
         CAP.set(3, CURRENT_RESOLUTION[0])
         CAP.set(4, CURRENT_RESOLUTION[1])
+
+        frames = 0
         while True:
             ret, frame = CAP.read()
-
             if not ret: 
                 print('Hiba lépett fel a kamera indítása közben.')
                 break
@@ -177,26 +185,31 @@ def recognize():
             for (x,y,w,h) in faces:
                 roi_gray = frameGreyscale[y:y+h, x:x+h]
                 id_, cf = recognizer.predict(roi_gray)
-                print(memberslist['members'][id_], cf)
-
-            #print(faces, len(faces))
-
-            for (x,y,w,h) in faces:
                 cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
+                if not id_ in recognizedFaces:
+                    recognizedFaces[id_] = [id_, 0]
+                else:
+                    recognizedFaces[id_][1] += 1
+                frames += 1
 
-<<<<<<< HEAD
-            #frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
-=======
-        frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
->>>>>>> 34a87274e95b8cb1fb66b87c2d17d3368a98b1ee
-
+            if ZOOM:
+                frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
             cv.imshow('frame', frame)
-        CAP.release()
-        cv.destroyAllWindows()
-        os.system('cls')
+            if frames > 25:
+                CAP.release()
+                cv.destroyAllWindows()
+                for k, v in recognizedFaces.items():
+                    id = recognizedFaces[k][0]
+                    percentage = recognizedFaces[k][1]
+                    print(memberslist['members'][id]['name'], '-', str(percentage*4)+'%')
+                    input('Nyomj enter-t a továbblépéshez.\n')
+                break
+
+        clear_terminal()
         main()
     else:
-        os
+        clear_terminal()
+        main()
 
 def main():
     print("Beszélő Benedek Fitness CLI -\n© Hajdu Benedek, Resz Máté, Granilla Péter\n")
@@ -211,10 +224,10 @@ def main():
     elif choice == "2":
         registerData()
     elif choice == "x":
-        os.system('cls')
+        clear_terminal()
         exit()
     else: 
         print("Helytelen érték.")
-        os.system('cls')
+        clear_terminal()
         main()
 main()
