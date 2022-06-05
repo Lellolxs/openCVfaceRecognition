@@ -1,20 +1,58 @@
 import os
+from sys import platform
 import numpy as np
 import cv2 as cv
 import time
 from PIL import Image
 import json
+import datetime
+
+clear_terminal = None
 
 COLOR = (255,0,0)
 STROKE = 2
 
-HI_RES = (640, 480) # idk, huawei laptop camera
-LOW_RES = (320, 240) # Logitech c110
-
-CURRENT_RESOLUTION = LOW_RES
+HIGHEST_RESOLUTION = (1024, 768)
+CURRENT_RESOLUTION = (320, 240)
+ZOOM = True
 
 face_cascade = cv.CascadeClassifier('cascades/haarcascade_frontalface_alt2.xml')
 
+def clear_windows():
+    os.system('cls')
+
+def clear_linux():
+    os.system('clear')
+
+if platform == 'linux' or platform == 'linux2':
+    clear_terminal = clear_linux
+elif platform == 'darwin':
+    clear_terminal = clear_linux
+elif platform == 'win32':
+    clear_terminal = clear_windows
+    os.system('@echo off')
+    clear_terminal()
+
+if clear_terminal == None:
+    print('Végzetes hiba lépett fel, ezért a program fel lett függesztve.')
+    exit()
+
+
+print('Válasszon kamera felbontást:\n1 | 320 x 240\n2 | 640 x 480\n3 | 800 x 600\n4 | 1024 x 768')
+resolution = int(input('>>>'))
+if resolution == 1:
+    CURRENT_RESOLUTION = (320, 240)
+    ZOOM = True
+elif resolution == 2:
+    CURRENT_RESOLUTION = (640, 480)
+    ZOOM = False
+elif resolution == 3:
+    CURRENT_RESOLUTION = (800, 600)
+    ZOOM = False
+elif resolution == 4:
+    CURRENT_RESOLUTION = (1024, 768)
+    ZOOM = False
+    
 def train():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     image_dir = os.path.join(BASE_DIR, "registeredMembers")
@@ -114,41 +152,47 @@ def recognize():
     memberslist = []
     with open('members.json', 'r', encoding='UTF-8') as members:
         memberslist = json.load(members)
-    recognizer = cv.face_LBPHFaceRecognizer.create()
-    recognizer.read('trainer.yml')
-    CAP = cv.VideoCapture(0)
-    CAP.set(3, CURRENT_RESOLUTION[0])
-    CAP.set(4, CURRENT_RESOLUTION[1])
-    while True:
-        ret, frame = CAP.read()
+    print(memberslist)
+    if not len(memberslist['members']) == 0:
+        # date = datetime.datetime.now()
+        # print(date)
+        recognizer = cv.face_LBPHFaceRecognizer.create()
+        recognizer.read('trainer.yml')
+        CAP = cv.VideoCapture(0)
+        CAP.set(3, CURRENT_RESOLUTION[0])
+        CAP.set(4, CURRENT_RESOLUTION[1])
+        while True:
+            ret, frame = CAP.read()
 
-        if not ret: 
-            print('Hiba lépett fel a kamera indítása közben.')
-            break
+            if not ret: 
+                print('Hiba lépett fel a kamera indítása közben.')
+                break
 
-        if cv.waitKey(20) & 0xFF == ord('q'):
-            break
+            if cv.waitKey(20) & 0xFF == ord('q'):
+                break
 
-        frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(frameGreyscale, 1.2, 4)
+            frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(frameGreyscale, 1.2, 4)
 
-        for (x,y,w,h) in faces:
-            roi_gray = frameGreyscale[y:y+h, x:x+h]
-            id_, cf = recognizer.predict(roi_gray)
-            print(memberslist['members'][id_], cf)
+            for (x,y,w,h) in faces:
+                roi_gray = frameGreyscale[y:y+h, x:x+h]
+                id_, cf = recognizer.predict(roi_gray)
+                print(memberslist['members'][id_], cf)
 
-        #print(faces, len(faces))
+            #print(faces, len(faces))
 
-        for (x,y,w,h) in faces:
-            cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
+            for (x,y,w,h) in faces:
+                cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
 
-        #frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
+            #frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
 
-        cv.imshow('frame', frame)
-    CAP.release()
-    cv.destroyAllWindows()
-    os.system('cls')
-    main()
+            cv.imshow('frame', frame)
+        CAP.release()
+        cv.destroyAllWindows()
+        os.system('cls')
+        main()
+    else:
+        os
 
 def main():
     print("Beszélő Benedek Fitness CLI -\n© Hajdu Benedek, Resz Máté, Granilla Péter\n")
