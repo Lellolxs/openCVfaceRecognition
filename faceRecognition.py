@@ -1,4 +1,5 @@
 import os
+import shutil
 from sys import platform
 import numpy as np
 import cv2 as cv
@@ -15,6 +16,8 @@ STROKE = 2
 HIGHEST_RESOLUTION = (1024, 768)
 CURRENT_RESOLUTION = (320, 240)
 ZOOM = True
+FONT = cv.FONT_HERSHEY_COMPLEX
+
 
 face_cascade = cv.CascadeClassifier('cascades/haarcascade_frontalface_alt2.xml')
 
@@ -80,13 +83,32 @@ def train():
                 image_array = np.array(pil_image, 'uint8')
                 faces = face_cascade.detectMultiScale(image_array, 1.2, 4)
 
-                for (x,y,w,h) in faces:
-                    roi = image_array[y:y+h, x:x+w]
-                    train.append(roi)
-                    labels.append(id_)
+                if len(faces) == 1:
+                    for (x,y,w,h) in faces:
+                        roi = image_array[y:y+h, x:x+w]
+                        train.append(roi)
+                        labels.append(id_)
+                else:
+                    print("Meghibásodott fényképekkel nem lehet tanítani.\nValószínüleg gyenge fényviszonyok, vagy rosz kamera elhelyezés okozhatták ezt a hibát.")
+                    input('Nyomj enter-t a továbblépéshez.\n')
+                    return False
 
     recognizer.train(train, np.array(labels))
     recognizer.save('trainer.yml')
+    return True
+
+# def revokeMembership():
+#     memberslist = []
+#     with open('members.json', 'r', encoding='UTF-8') as members:
+#         memberslist = json.load(members)
+    
+#     clear_terminal()
+#     print("Tagok listája:")
+#     for m in memberslist['members']:
+#         print(m['name'])
+#     input()
+#     clear_terminal()
+#     main()
 
 def registerMemberPicture(data):
     CAP = cv.VideoCapture(0, cv.CAP_DSHOW)
@@ -131,7 +153,13 @@ def registerMemberPicture(data):
         cv.imshow('frame', frame)
     CAP.release()
     cv.destroyAllWindows()
-    train()
+    trained = train()
+    if not trained:
+        members = memberslist['members']
+        memberslist['members'].pop(nextMemberId)
+        shutil.rmtree( f'./registeredMembers/{nextMemberId}')
+        with open('members.json', 'w', encoding='UTF-8') as members:
+            json.dump(memberslist, members, indent=2, separators=(',',': '), ensure_ascii=False)
     clear_terminal()
     main()
 
@@ -162,7 +190,6 @@ def recognize():
         memberslist = json.load(members)
     if not len(memberslist['members']) == 0:
         recognizedFaces = dict()
-        date = datetime.datetime.now()
         recognizer = cv.face_LBPHFaceRecognizer.create()
         recognizer.read('trainer.yml')
         CAP = cv.VideoCapture(0, cv.CAP_DSHOW)
@@ -194,15 +221,32 @@ def recognize():
 
             if ZOOM:
                 frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
+
+            progress = f'Arcfelismeres folyamatban: {frames*2}%'
+            cv.putText(frame,progress,(10,30), FONT ,1,(25,25,25),1)  #text,coordinate,font,size of text,color,thickness of font
             cv.imshow('frame', frame)
-            if frames > 25:
+            if frames > 50:
+                date = datetime.date.today()
                 CAP.release()
                 cv.destroyAllWindows()
                 for k, v in recognizedFaces.items():
                     id = recognizedFaces[k][0]
+                    memeberdata = memberslist['members'][id]
+                    birthdate = memeberdata['birthdate']
+                    purchase_date = datetime.date(memeberdata['purchase_date'][0], memeberdata['purchase_date'][1], memeberdata['purchase_date'][2])
+                    pass_expires = purchase_date + datetime.timedelta(memeberdata['pass_type'])
+                    delta = pass_expires - date
                     percentage = recognizedFaces[k][1]
-                    print(memberslist['members'][id]['name'], '-', str(percentage*4)+'%')
-                    input('Nyomj enter-t a továbblépéshez.\n')
+                    clear_terminal()
+                    print("Név: ", memeberdata['name'], '-', str(percentage*2)+'%')
+                    print("Született: ", f"{birthdate[0]} {birthdate[1]} {birthdate[2]}.")
+                    print("Bérlet típus: ", memeberdata['pass_type'])
+                    print("Bérletet vásárolta: ", f"{purchase_date.year} {purchase_date.month} {purchase_date.day}.")
+                    if not delta.days == 0:
+                        print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ({delta.days} Nap)\n")
+                    else:
+                        print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ( Lejárt )\n")
+                input('Nyomj enter-t a továbblépéshez.\n')
                 break
 
         clear_terminal()
@@ -216,6 +260,7 @@ def main():
 
     print("1 | Arcfelismerés")
     print("2 | Új tagság regisztrálása")
+    # print("3 | Tagság megvonása")
     print("x | Kilépés")
     choice = input(">>> ")
 
@@ -223,6 +268,8 @@ def main():
         recognize()
     elif choice == "2":
         registerData()
+    # elif choice == "3":
+        #revokeMembership()
     elif choice == "x":
         clear_terminal()
         exit()
