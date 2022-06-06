@@ -81,7 +81,7 @@ def train():
                 id_ = label_ids[label]
                 pil_image = Image.open(path).convert('L')
                 image_array = np.array(pil_image, 'uint8')
-                faces = face_cascade.detectMultiScale(image_array, 1.2, 4)
+                faces = face_cascade.detectMultiScale(image_array, 1.15, 4)
 
                 if len(faces) == 1:
                     for (x,y,w,h) in faces:
@@ -126,7 +126,7 @@ def registerMemberPicture(data):
             print('Hiba lépett fel a kamera indítása közben.')
             break
         frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(frameGreyscale, 1.2, 4)
+        faces = face_cascade.detectMultiScale(frameGreyscale, 1.15, 4)
 
         if cv.waitKey(20) & 0xFF == ord('q'):
             if len(faces) > 0:
@@ -207,7 +207,7 @@ def recognize():
                 break
 
             frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(frameGreyscale, 1.2, 4)
+            faces = face_cascade.detectMultiScale(frameGreyscale, 1.15, 4)
 
             for (x,y,w,h) in faces:
                 roi_gray = frameGreyscale[y:y+h, x:x+h]
@@ -229,23 +229,36 @@ def recognize():
                 date = datetime.date.today()
                 CAP.release()
                 cv.destroyAllWindows()
+                highestPercentage = 0
+                highestKey = ""
+                print(recognizedFaces.items())
                 for k, v in recognizedFaces.items():
-                    id = recognizedFaces[k][0]
-                    memeberdata = memberslist['members'][id]
-                    birthdate = memeberdata['birthdate']
-                    purchase_date = datetime.date(memeberdata['purchase_date'][0], memeberdata['purchase_date'][1], memeberdata['purchase_date'][2])
-                    pass_expires = purchase_date + datetime.timedelta(memeberdata['pass_type'])
-                    delta = pass_expires - date
-                    percentage = recognizedFaces[k][1]
-                    clear_terminal()
-                    print("Név: ", memeberdata['name'], '-', str(percentage*2)+'%')
-                    print("Született: ", f"{birthdate[0]} {birthdate[1]} {birthdate[2]}.")
-                    print("Bérlet típus: ", memeberdata['pass_type'])
-                    print("Bérletet vásárolta: ", f"{purchase_date.year} {purchase_date.month} {purchase_date.day}.")
-                    if not delta.days == 0:
-                        print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ({delta.days} Nap)\n")
-                    else:
-                        print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ( Lejárt )\n")
+                    print("value", v)
+                    if v[1] > highestPercentage:
+                        highestKey = k
+                        highestPercentage = v[1]
+
+                # for k, v in recognizedFaces.items():
+                k = highestKey
+                id = recognizedFaces[k][0]
+                memeberdata = memberslist['members'][id]
+                birthdate = memeberdata['birthdate']
+                purchase_date = datetime.date(memeberdata['purchase_date'][0], memeberdata['purchase_date'][1], memeberdata['purchase_date'][2])
+                pass_expires = purchase_date + datetime.timedelta(memeberdata['pass_type'])
+                delta = pass_expires - date
+                percentage = recognizedFaces[k][1]
+                clear_terminal()
+
+                print("Név: ", memeberdata['name'], '-', str(percentage*2)+'%')
+                print("Született: ", f"{birthdate[0]} {birthdate[1]} {birthdate[2]}.")
+                print("Bérlet típus: ", memeberdata['pass_type'])
+                print("Bérletet vásárolta: ", f"{purchase_date.year} {purchase_date.month} {purchase_date.day}.")
+
+                if not delta.days == 0:
+                    print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ({delta.days} Nap)\n")
+                else:
+                    print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ( Lejárt )\n")
+
                 input('Nyomj enter-t a továbblépéshez.\n')
                 break
 
