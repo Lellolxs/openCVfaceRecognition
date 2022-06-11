@@ -1,1 +1,0 @@
-Követelmények (python modulok): opencv-python, opencv-contrib-python, numpy, PIL, json, time, os

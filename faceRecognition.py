@@ -4,7 +4,7 @@ from sys import platform
 import numpy as np
 import cv2 as cv
 import time
-from PIL import Image
+from PIL import ImageFont, ImageDraw, Image
 import json
 import datetime
 
@@ -17,9 +17,8 @@ HIGHEST_RESOLUTION = (1024, 768)
 CURRENT_RESOLUTION = (320, 240)
 ZOOM = True
 FONT = cv.FONT_HERSHEY_COMPLEX
-
-
 face_cascade = cv.CascadeClassifier('cascades/haarcascade_frontalface_alt2.xml')
+MPLUS_FONT = ImageFont.truetype('./redist/MPLUS.ttf', 32)
 
 def clear_windows():
     os.system('cls')
@@ -56,6 +55,7 @@ elif resolution == 4:
     CURRENT_RESOLUTION = (1024, 768)
     ZOOM = False
 clear_terminal()
+
 
 def train():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -97,24 +97,15 @@ def train():
     recognizer.save('trainer.yml')
     return True
 
-# def revokeMembership():
-#     memberslist = []
-#     with open('members.json', 'r', encoding='UTF-8') as members:
-#         memberslist = json.load(members)
-    
-#     clear_terminal()
-#     print("Tagok listája:")
-#     for m in memberslist['members']:
-#         print(m['name'])
-#     input()
-#     clear_terminal()
-#     main()
 
 def registerMemberPicture(data):
     CAP = cv.VideoCapture(0, cv.CAP_DSHOW)
-    CAP.set(3, CURRENT_RESOLUTION[0])
-    CAP.set(4, CURRENT_RESOLUTION[1])
-
+    CAP.set(cv.CAP_PROP_FRAME_WIDTH, CURRENT_RESOLUTION[0])
+    CAP.set(cv.CAP_PROP_FRAME_HEIGHT, CURRENT_RESOLUTION[1])
+    # CAP.set(cv.CAP_PROP_SETTINGS, 1)
+    # print("Kérjük konfigurálja a kamerát.\n")
+    # input('Nyomjon entert a folytatáshoz:\n')
+    
     memberslist = []
     with open('members.json', 'r', encoding='UTF-8') as members:
         memberslist = json.load(members)
@@ -148,9 +139,7 @@ def registerMemberPicture(data):
         for (x,y,w,h) in faces:
             cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
 
-        #frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
-
-        cv.imshow('frame', frame)
+        cv.imshow('Arc Beolvasasa', frame)
     CAP.release()
     cv.destroyAllWindows()
     trained = train()
@@ -163,6 +152,7 @@ def registerMemberPicture(data):
     clear_terminal()
     main()
 
+
 def getBirthDate():
     szuletett = input("Született (ÉV-HÓ-NAP): ")
     szuletett = szuletett.split('-')
@@ -172,6 +162,7 @@ def getBirthDate():
         return szuletett
     else:
         getBirthDate()
+
 
 def registerData():
     date = datetime.datetime.now()
@@ -184,89 +175,123 @@ def registerData():
     clear_terminal()
     registerMemberPicture(userData)
 
+
 def recognize():
+    clear_terminal()
     memberslist = []
     with open('members.json', 'r', encoding='UTF-8') as members:
         memberslist = json.load(members)
-    if not len(memberslist['members']) == 0:
+    if not len(memberslist['members']) == 0: 
         recognizedFaces = dict()
         recognizer = cv.face_LBPHFaceRecognizer.create()
         recognizer.read('trainer.yml')
         CAP = cv.VideoCapture(0, cv.CAP_DSHOW)
-        CAP.set(3, CURRENT_RESOLUTION[0])
-        CAP.set(4, CURRENT_RESOLUTION[1])
-
+        # CAP.set(cv.CAP_PROP_SETTINGS, 1)
+        # print("Kérjük konfigurálja a kamerát.\n")
+        # input('Nyomjon entert a folytatáshoz:\n')
+        CAP.set(cv.CAP_PROP_FRAME_WIDTH, CURRENT_RESOLUTION[0])
+        CAP.set(cv.CAP_PROP_FRAME_HEIGHT, CURRENT_RESOLUTION[1])
+        mostLikelyMatch = ''
         frames = 0
         while True:
+            cv.waitKey(1)
             ret, frame = CAP.read()
             if not ret: 
                 print('Hiba lépett fel a kamera indítása közben.')
                 break
 
-            if cv.waitKey(20) & 0xFF == ord('q'):
-                break
-
             frameGreyscale = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
             faces = face_cascade.detectMultiScale(frameGreyscale, 1.15, 4)
 
-            for (x,y,w,h) in faces:
-                roi_gray = frameGreyscale[y:y+h, x:x+h]
-                id_, cf = recognizer.predict(roi_gray)
-                cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
-                if not id_ in recognizedFaces:
-                    recognizedFaces[id_] = [id_, 0]
-                else:
-                    recognizedFaces[id_][1] += 1
-                frames += 1
+            if len(faces) > 0 and len(faces) < 2:
+                for (x,y,w,h) in faces:
+                    roi_gray = frameGreyscale[y:y+h, x:x+h]
+                    id_, cf = recognizer.predict(roi_gray)
+                    cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
 
-            if ZOOM:
-                frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
+                    print(cf)
+                    if cf < 50 and not id_ in recognizedFaces:
+                        recognizedFaces[id_] = [id_, 1]
+                    elif cf < 50 and id_ in recognizedFaces:
+                        recognizedFaces[id_][1] += 1
+                    elif cf > 50:
+                        if not 'unknown' in recognizedFaces:
+                            recognizedFaces['unknown'] = ['unknown', 1]
+                        else:
+                            recognizedFaces['unknown'][1] += 1
+                    frames += 1
 
-            progress = f'Arcfelismeres folyamatban: {frames*2}%'
-            cv.putText(frame,progress,(10,30), FONT ,1,(25,25,25),1)  #text,coordinate,font,size of text,color,thickness of font
-            cv.imshow('frame', frame)
-            if frames > 50:
-                date = datetime.date.today()
-                CAP.release()
-                cv.destroyAllWindows()
                 highestPercentage = 0
-                highestKey = ""
-                print(recognizedFaces.items())
+                highestKey = ''
                 for k, v in recognizedFaces.items():
-                    print("value", v)
                     if v[1] > highestPercentage:
                         highestKey = k
                         highestPercentage = v[1]
+                        
+                id = recognizedFaces[highestKey][0]
+                
+                if id == 'unknown':
+                    mostLikelyMatch = 'Legjobb találat: Ismeretlen!'
+                else:
+                    memeberdata = memberslist['members'][id]
+                    mostLikelyMatch = 'Legjobb találat: %s' % memeberdata['name']
+                    
+            frame_pil = Image.fromarray(frame)
+            draw = ImageDraw.Draw(frame_pil)
+            draw.text((10, CURRENT_RESOLUTION[1]-60), mostLikelyMatch, font = MPLUS_FONT, fill = (0, 0, 250, 0))
+            frame = np.array(frame_pil)
+            progress = f'Arcfelismeres folyamatban: {frames*2}%'
+            cv.putText(frame,progress,(10,30), FONT ,1,(25,25,250),1)
+
+            if ZOOM:
+                frame = cv.resize(frame, (CURRENT_RESOLUTION[0]*2, CURRENT_RESOLUTION[1]*2))
+            cv.imshow('Arcfelismerés', frame)
+            if frames > 50:
+                CAP.release()
+                cv.destroyAllWindows()
+                date = datetime.date.today()
+                # highestPercentage = 0
+                # highestKey = ""
 
                 # for k, v in recognizedFaces.items():
-                k = highestKey
-                id = recognizedFaces[k][0]
-                memeberdata = memberslist['members'][id]
-                birthdate = memeberdata['birthdate']
-                purchase_date = datetime.date(memeberdata['purchase_date'][0], memeberdata['purchase_date'][1], memeberdata['purchase_date'][2])
-                pass_expires = purchase_date + datetime.timedelta(memeberdata['pass_type'])
-                delta = pass_expires - date
-                percentage = recognizedFaces[k][1]
-                clear_terminal()
+                #     # print("value", v)
+                #     if v[1] > highestPercentage:
+                #         highestKey = k
+                #         highestPercentage = v[1]
 
-                print("Név: ", memeberdata['name'], '-', str(percentage*2)+'%')
-                print("Született: ", f"{birthdate[0]} {birthdate[1]} {birthdate[2]}.")
-                print("Bérlet típus: ", memeberdata['pass_type'])
-                print("Bérletet vásárolta: ", f"{purchase_date.year} {purchase_date.month} {purchase_date.day}.")
+                id = recognizedFaces[highestKey][0]
+                if id != 'unknown':
+                    memeberdata = memberslist['members'][id]
+                    birthdate = memeberdata['birthdate']
+                    purchase_date = datetime.date(memeberdata['purchase_date'][0], memeberdata['purchase_date'][1], memeberdata['purchase_date'][2])
+                    pass_expires = purchase_date + datetime.timedelta(memeberdata['pass_type'])
+                    delta = pass_expires - date
+                    percentage = recognizedFaces[highestKey][1]
+                    clear_terminal()
 
-                if not delta.days == 0:
-                    print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ({delta.days} Nap)\n")
+                    print("Név: ", memeberdata['name'], '-', str(percentage*2)+'%')
+                    print("Született: ", f"{birthdate[0]} {birthdate[1]} {birthdate[2]}.")
+                    print("Bérlet típus: ", memeberdata['pass_type'])
+                    print("Bérletet vásárolta: ", f"{purchase_date.year} {purchase_date.month} {purchase_date.day}.")
+
+                    if not delta.days == 0:
+                        print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ({delta.days} Nap)\n")
+                    else:
+                        print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ( Lejárt )\n")
+
+                    input('Nyomj enter-t a továbblépéshez.\n')
+                    break
                 else:
-                    print("Bérlete lejár : ", f"{pass_expires.year} {pass_expires.month} {pass_expires.day}. ( Lejárt )\n")
-
-                input('Nyomj enter-t a továbblépéshez.\n')
-                break
-
+                    clear_terminal()
+                    print('Ismeretlen személy.\n')
+                    input('Nyomj enter-t a továbblépéshez.\n')
+                    break
         clear_terminal()
         main()
     else:
         clear_terminal()
         main()
+
 
 def main():
     print("Beszélő Benedek Fitness CLI -\n© Hajdu Benedek, Resz Máté, Granilla Péter\n")
