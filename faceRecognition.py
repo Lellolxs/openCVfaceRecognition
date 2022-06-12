@@ -209,7 +209,7 @@ def recognize():
                     id_, cf = recognizer.predict(roi_gray)
                     cv.rectangle(frame, (x,y), (x+w,y+h), COLOR, STROKE )
 
-                    print(cf)
+                    # print(cf)
                     if cf < 50 and not id_ in recognizedFaces:
                         recognizedFaces[id_] = [id_, 1]
                     elif cf < 50 and id_ in recognizedFaces:
