@@ -1,12 +1,15 @@
-import os
-import shutil
-from sys import platform
+# External libraries: 
+from PIL import ImageFont, ImageDraw, Image
 import numpy as np
 import cv2 as cv
-import time
-from PIL import ImageFont, ImageDraw, Image
-import json
+
+#STD libraries
+from sys import platform
 import datetime
+import os
+import shutil
+import time
+import json
 
 clear_terminal = None
 
